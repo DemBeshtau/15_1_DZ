@@ -1,0 +1,70 @@
+---
+- hosts: pam
+  become: true
+  tasks:
+  
+  - name: Enable SSH Password Authentication
+    shell: sed -i 's/^.*PasswordAuthentication.*$/PasswordAuthentication yes/' /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+  
+  - name: Restarting SSH
+    systemd: 
+      name: sshd
+      state: restarted
+      enabled: yes
+    
+  - name: Adding group -admin-
+    group:
+      name: admin
+      state: present
+
+  - name: Adding group -otus-
+    group:
+      name: otus
+      state: present
+
+  - name: Adding user -otus- 
+    user: 
+      name: otus
+      password: "{{ 'Otus2022!' | password_hash('sha512') }}"
+      groups: otus
+      append: yes
+      state: present
+      shell: /bin/bash
+  
+  - name: Adding user -otusadm- 
+    user: 
+      name: otusadm
+      password: "{{ 'Otus2022!' | password_hash('sha512') }}"
+      groups: admin
+      append: yes
+      state: present
+      shell: /bin/bash
+  
+  - name: Adding user -root- to group -admin-
+    user: 
+      name: root
+      groups: admin
+      append: yes
+      state: present
+
+  - name: Adding user -vagrant- to group -admin-
+    user: 
+      name: vagrant
+      groups: admin
+      append: yes
+      state: present
+  
+  - name: Copying PAM configuration for SSH service
+    copy:
+      src: files/sshd
+      dest: /etc/pam.d/
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Copying login.sh to /usr/local/bin
+    copy:
+      src: files/login.sh
+      dest: /usr/local/bin/
+      mode: 0755        
+...   
