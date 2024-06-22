@@ -8,7 +8,7 @@
 &ensp;&ensp;&ensp;Ansible (https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html).<br/>
 &ensp;&ensp;Все действия проводились с использованием Vagrant 2.4.0, VirtualBox 7.0.14, Ansible 9.3.0 и образа ubuntu/jammy64 версии 20240301.0.0.<br/> 
 ### Ход решения ###
-1. Исходя из условия задачи логичным выбром PAM-аутентификации выглядит использования модуля pam_time. Однако данный модуль не работает с локальными группами пользователей. Для предлагаемой задачи более подходящем решением является подготовка небольшого скрипта и использование модуля pam_exec.<br/>
+1. Исходя из условия задачи логичным выбром PAM-аутентификации выглядит использование модуля pam_time. Однако данный модуль не работает с локальными группами пользователей. Для предлагаемой задачи более подходящим решением является подготовка небольшого скрипта и использование модуля pam_exec.<br/>
 &ensp;&ensp;Скрипт должен работать по следующему принципу: если сегодня суббота или воскресенье, то нужно проверить, входит ли пользователь в группу admin, если не входит, то подключение запрещено. При любых других вариантах подключение разрешено. <br/>
 &ensp;&ensp;Скрипт располагается в /usr/local/bin.
 ```shell
@@ -46,4 +46,39 @@ root@pam:~# usermod otusadm -aG admin && usermod root -aG admin && usermod vagra
 root@pam:~# cat /etc/group | grep admin
 admin:x:118:otusadm,root,vagrant
 ```
-5. Добавление 
+5. Добавление модуля pam_exec и скрипта login.sh в PAM конфигурацию сервиса SSH:
+```shell
+root@pam:~# nano /etc/pam.d/sshd
+...
+# Disallow non-root logins when /etc/nologin exists.
+account    required     pam_nologin.so
+auth       required     pam_exec.so /usr/local/bin/login.sh
+...
+```
+6. Проверка работы полученной конфигурации PAM (в субботу):
+```shell
+root@pam:~# date
+Sat Jun 22 12:13:02 UTC 2024
+
+dem@calculate ~ $ ssh otus@192.168.57.10
+The authenticity of host '192.168.57.10 (192.168.57.10)' can't be established.
+ED25519 key fingerprint is SHA256:qP41PPCytFAwCZ/hhE8bK61PqmdZ5/MaEFVLb2rrF9Q.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.168.57.10' (ED25519) to the list of known hosts.
+otus@192.168.57.10's password: 
+Permission denied, please try again.
+
+dem@calculate ~ $ ssh otusadm@192.168.57.10
+otusadm@192.168.57.10's password: 
+Welcome to Ubuntu 22.04.4 LTS (GNU/Linux 5.15.0-97-generic x86_64)
+... 
+otusadm@pam:~$ 
+
+dem@calculate ~ $ ssh vagrant@192.168.57.10
+vagrant@192.168.57.10's password: 
+Welcome to Ubuntu 22.04.4 LTS (GNU/Linux 5.15.0-97-generic x86_64)
+...
+vagrant@pam:~$ 
+```
+&ensp;&ensp;Окончательная конфигурация системы, в соответствии с условиями задания, производится с помощью Ansible. Плейбук и необходимые файлы находятся в директории provisioning.
