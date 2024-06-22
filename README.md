@@ -41,3 +41,9 @@ root@pam:~# echo 'otusadm:Otus2022!' | sudo chpasswd && echo 'otus:Otus2022!' | 
 root@pam:~# groupadd -f admin
 root@pam:~# usermod otusadm -aG admin && usermod root -aG admin && usermod vagrant -aG admin
 ```
+4. Проверка наличия пользователей vagrant, root, otusadm в группе admin:
+```shel
+root@pam:~# cat /etc/group | grep admin
+admin:x:118:otusadm,root,vagrant
+```
+5. Добавление 
